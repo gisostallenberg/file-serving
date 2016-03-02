@@ -1,0 +1,20 @@
+{
+    "name": "gisostallenberg/file-serving",
+    "description": "Serve files to the browser that are not available directly",
+    "type": "package",
+    "require": {
+        "symfony/http-foundation": "^3.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Giso Stallenberg",
+            "email": "gisostallenberg@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "GisoStallenberg\\FileServing\\": "src/"
+        }
+    }
+}
