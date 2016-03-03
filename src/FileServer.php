@@ -74,6 +74,7 @@ class FileServer
         $filePath = $this->from.substr($requestPath, strlen($this->to));
 
         if (is_file($filePath)) {
+
             $file = new File($filePath);
             $response = Response::create()
                 ->setExpires(new DateTime('+1 week'))
@@ -84,11 +85,49 @@ class FileServer
                 return $response;
             }
 
-            $response->headers->set('Content-Type', $file->getMimeType() ?: 'application/octet-stream');
+            $this->setContentType($file, $response);
             return $response->setContent(file_get_contents($file->getPathname()));
         }
 
         return Response::create('', Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * Sets the correct content-type
+     *
+     * @param File $file
+     * @param Response $response
+     */
+    private function setContentType(File $file, Response $response)
+    {
+        $extension = pathinfo($file->getPathname(), PATHINFO_EXTENSION);
+
+        switch ($extension) {
+            case 'css':
+                $contentType = 'text/css';
+                break;
+            case 'js':
+                $contentType = 'application/javascript';
+                break;
+            case 'png':
+                $contentType = 'image/png';
+                break;
+            case 'jpg':
+            case 'jpeg':
+                $contentType = 'image/jpeg';
+                break;
+            case 'gif':
+                $contentType = 'image/gif';
+                break;
+            case 'txt':
+                $contentType = 'text/plain';
+                break;
+            default:
+                $contentType = $file->getMimeType();
+                break;
+        }
+
+        $response->headers->set('Content-Type', $contentType);
     }
 
     /**
