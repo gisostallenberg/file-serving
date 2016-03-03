@@ -7,6 +7,12 @@ composer require gisostallenberg/file-serving
 ```
 
 ## Usage example
+Add in serve-it/.htaccess
+```txt
+RewriteRule .*  file-serving.php [QSA,L]
+```
+
+file-serving.php content
 ```php
 <?php
 require_once __DIR__ . '/../../vendor/autoload.php';
