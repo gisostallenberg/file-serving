@@ -31,13 +31,6 @@ class FileServer
     private $request;
 
     /**
-     * The base path to find files.
-     *
-     * @var string
-     */
-    private $basePath;
-
-    /**
      * Constructor.
      *
      * @param string  $from
@@ -53,8 +46,6 @@ class FileServer
             $request = Request::createFromGlobals();
         }
         $this->request = $request;
-
-        $this->basePath = $this->request->server->get('DOCUMENT_ROOT');
     }
 
     /**
@@ -80,7 +71,7 @@ class FileServer
     {
         $requestPath = parse_url($this->request->server->get('REQUEST_URI'), PHP_URL_PATH);
 
-        $filePath = $this->basePath.$this->from.substr($requestPath, strlen($this->to));
+        $filePath = $this->from.substr($requestPath, strlen($this->to));
 
         if (is_file($filePath)) {
             $file = new File($filePath);
