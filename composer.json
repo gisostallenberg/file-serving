@@ -1,7 +1,7 @@
 {
     "name": "gisostallenberg/file-serving",
     "description": "Serve files to the browser that are not available directly",
-    "type": "package",
+    "type": "library",
     "require": {
         "php": "^5.3.9",
         "symfony/http-foundation": "^2.8|^3.0"
