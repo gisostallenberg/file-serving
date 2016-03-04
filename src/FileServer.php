@@ -45,7 +45,7 @@ class FileServer
      */
     public function __construct($from, $to, Request $request = null)
     {
-        $this->from = $from;
+        $this->from = (array) $from;
         $this->to = $to;
 
         if (is_null($request)) {
@@ -90,29 +90,31 @@ class FileServer
     {
         $requestPath = parse_url($this->request->server->get('REQUEST_URI'), PHP_URL_PATH);
 
-        $filePath = $this->from.substr($requestPath, strlen($this->to));
+        foreach ($this->from as $from) {
+            $filePath = $from.substr($requestPath, strlen($this->to));
 
-        if (!$this->isAllowedExtension(pathinfo($filePath, PATHINFO_EXTENSION))) {
-            return $this->getNotFoundResponse();
-        }
-
-        if (is_file($filePath)) {
-
-            $file = new File($filePath);
-            $response = Response::create()
-                ->setExpires(new DateTime('+1 week'))
-                ->setLastModified(DateTime::createFromFormat('U', $file->getMTime()));;
-
-            if ($response->isNotModified($this->request)) {
-
-                return $response;
+            if (!$this->isAllowedExtension(pathinfo($filePath, PATHINFO_EXTENSION))) {
+                continue;
             }
 
-            $this->setContentType($file, $response);
-            return $response->setContent(file_get_contents($file->getPathname()));
+            if (is_file($filePath)) {
+
+                $file = new File($filePath);
+                $response = Response::create()
+                    ->setExpires(new DateTime('+1 week'))
+                    ->setLastModified(DateTime::createFromFormat('U', $file->getMTime()));;
+
+                if ($response->isNotModified($this->request)) {
+
+                    return $response;
+                }
+
+                $this->setContentType($file, $response);
+                return $response->setContent(file_get_contents($file->getPathname()));
+            }
         }
 
-        return $this->getNotFoundResponse();
+            return $this->getNotFoundResponse();
     }
 
     /**
