@@ -10,6 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 class FileServer
 {
     /**
+     * The extensions that should be served, empty array means all
+     *
+     * @var array
+     */
+    private $allowedExtensions = array();
+    /**
      * The path to serve from.
      *
      * @var string
@@ -63,6 +69,19 @@ class FileServer
     }
 
     /**
+     * Sets the allowed extensions
+     *
+     * @param array $allowedExtensions
+     * @return FileServer
+     */
+    public function filterExtensions(array $allowedExtensions)
+    {
+        $this->allowedExtensions = $allowedExtensions;
+
+        return $this;
+    }
+
+    /**
      * Creates the response object.
      *
      * @return Response
@@ -72,6 +91,10 @@ class FileServer
         $requestPath = parse_url($this->request->server->get('REQUEST_URI'), PHP_URL_PATH);
 
         $filePath = $this->from.substr($requestPath, strlen($this->to));
+
+        if (!$this->isAllowedExtension(pathinfo($filePath, PATHINFO_EXTENSION))) {
+            return $this->getNotFoundResponse();
+        }
 
         if (is_file($filePath)) {
 
@@ -89,6 +112,30 @@ class FileServer
             return $response->setContent(file_get_contents($file->getPathname()));
         }
 
+        return $this->getNotFoundResponse();
+    }
+
+    /**
+     * Test to see if the extension is allowed
+     *
+     * @param string $extension
+     * @return boolean
+     */
+    private function isAllowedExtension($extension)
+    {
+        if (empty($this->allowedExtensions)) {
+            return true;
+        }
+        return in_array($extension, $this->allowedExtensions);
+    }
+
+    /**
+     * Gives the NOT FOUND Response object
+     *
+     * @return Response
+     */
+    private function getNotFoundResponse()
+    {
         return Response::create('', Response::HTTP_NOT_FOUND);
     }
 
