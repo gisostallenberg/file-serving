@@ -34,7 +34,7 @@ $fileserver = new FileServer('../../serve-me/', 'serve-it/');
 $response = $fileserver->getResponse(); // do not serve yet
 
 if ($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
-    $fileserver = new FileServer('../../erve-other-dir/', 'serve-it/'); // check another directory
+    $fileserver = new FileServer('../../serve-other-dir/', 'serve-it/'); // check another directory
     $response = $fileserver->getResponse();
 }
 
