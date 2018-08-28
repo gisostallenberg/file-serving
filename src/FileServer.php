@@ -88,7 +88,7 @@ class FileServer
      */
     public function getResponse()
     {
-        $requestPath = parse_url($this->request->server->get('REQUEST_URI'), PHP_URL_PATH);
+        $requestPath = parse_url(urldecode($this->request->server->get('REQUEST_URI')), PHP_URL_PATH);
 
         foreach ($this->from as $from) {
             $filePath = $from.substr($requestPath, strlen($this->to));
