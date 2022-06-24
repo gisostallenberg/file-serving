@@ -100,7 +100,7 @@ class FileServer
             if (is_file($filePath)) {
 
                 $file = new File($filePath);
-                $response = Response::create()
+                $response = (new Response())
                     ->setExpires(new DateTime('+1 week'))
                     ->setLastModified(DateTime::createFromFormat('U', $file->getMTime()));;
 
@@ -138,7 +138,7 @@ class FileServer
      */
     private function getNotFoundResponse()
     {
-        return Response::create('', Response::HTTP_NOT_FOUND);
+        return new Response('', Response::HTTP_NOT_FOUND);
     }
 
     /**
