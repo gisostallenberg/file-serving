@@ -100,7 +100,7 @@ class FileServer
             if (is_file($filePath)) {
 
                 $file = new File($filePath);
-                $response = (new Response)
+                $response = (new Response())
                     ->setExpires(new DateTime('+1 week'))
                     ->setLastModified(DateTime::createFromFormat('U', $file->getMTime()));;
 
