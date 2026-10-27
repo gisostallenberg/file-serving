@@ -41,5 +41,29 @@ if ($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
 $response->send();
 ```
 
+## Filtering extensions
+Restrict which files may be served by passing an allow list of extensions.
+Anything not in the list gives a 404, even when the file exists.
+```php
+<?php
+use GisoStallenberg\FileServing\FileServer;
+
+$fileserver = FileServer::create('../../serve-me/', 'serve-it/')
+    ->filterExtensions(['css', 'js', 'png', 'jpg']);
+$fileserver->serve();
+```
+
+## Multiple directories
+Pass an array as the first argument to serve from several directories. They are
+checked in order and the first match wins, so a 404 only happens when the file
+is in none of them.
+```php
+<?php
+use GisoStallenberg\FileServing\FileServer;
+
+$fileserver = new FileServer(['../../serve-me/', '../../serve-other-dir/'], 'serve-it/');
+$fileserver->serve();
+```
+
 ## Credits
 Niels Nijens (https://github.com/niels-nijens/)
