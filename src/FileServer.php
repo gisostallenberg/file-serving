@@ -3,9 +3,10 @@
 namespace GisoStallenberg\FileServing;
 
 use DateTime;
-use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\MimeTypes;
 
 class FileServer
 {
@@ -88,33 +89,38 @@ class FileServer
      */
     public function getResponse()
     {
-        $requestPath = parse_url(urldecode($this->request->server->get('REQUEST_URI')), PHP_URL_PATH);
+        $requestPath = parse_url(urldecode($this->request->server->get('REQUEST_URI') ?? ''), PHP_URL_PATH);
+
+        if (!is_string($requestPath) || !str_starts_with($requestPath, $this->to)) {
+            return $this->getNotFoundResponse();
+        }
+
+        $relativePath = substr($requestPath, strlen($this->to));
 
         foreach ($this->from as $from) {
-            $filePath = $from.substr($requestPath, strlen($this->to));
+            $filePath = $from.$relativePath;
 
             if (!$this->isAllowedExtension(pathinfo($filePath, PATHINFO_EXTENSION))) {
                 continue;
             }
 
-            if (is_file($filePath)) {
-
-                $file = new File($filePath);
-                $response = (new Response())
-                    ->setExpires(new DateTime('+1 week'))
-                    ->setLastModified(DateTime::createFromFormat('U', $file->getMTime()));;
-
-                if ($response->isNotModified($this->request)) {
-
-                    return $response;
-                }
-
-                $this->setContentType($file, $response);
-                return $response->setContent(file_get_contents($file->getPathname()));
+            // Resolve symlinks and .. segments, then refuse anything that escapes the base directory.
+            $realPath = realpath($filePath);
+            $basePath = realpath($from);
+            if ($realPath === false || $basePath === false || !str_starts_with($realPath, $basePath.DIRECTORY_SEPARATOR)) {
+                continue;
             }
+
+            $response = new BinaryFileResponse($realPath);
+            $response->setAutoLastModified();
+            $response->setExpires(new DateTime('+1 week'));
+            $response->headers->set('Content-Type', $this->getContentType($realPath));
+            $response->isNotModified($this->request);
+
+            return $response;
         }
 
-            return $this->getNotFoundResponse();
+        return $this->getNotFoundResponse();
     }
 
     /**
@@ -128,7 +134,58 @@ class FileServer
         if (empty($this->allowedExtensions)) {
             return true;
         }
-        return in_array($extension, $this->allowedExtensions);
+        return in_array(strtolower($extension), array_map('strtolower', $this->allowedExtensions), true);
+    }
+
+    /**
+     * Determines the content type for a file.
+     *
+     * Uses a small built-in map first and falls back to the symfony/mime
+     * component when it is installed, so the library works without it.
+     *
+     * @param string $path
+     * @return string
+     */
+    private function getContentType($path)
+    {
+        $map = [
+            'css' => 'text/css',
+            'js' => 'application/javascript',
+            'mjs' => 'application/javascript',
+            'json' => 'application/json',
+            'map' => 'application/json',
+            'xml' => 'application/xml',
+            'html' => 'text/html',
+            'htm' => 'text/html',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'ico' => 'image/x-icon',
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            'ttf' => 'font/ttf',
+            'otf' => 'font/otf',
+            'eot' => 'application/vnd.ms-fontobject',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+        ];
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (isset($map[$extension])) {
+            return $map[$extension];
+        }
+
+        if (class_exists(MimeTypes::class)) {
+            return MimeTypes::getDefault()->guessMimeType($path) ?: 'application/octet-stream';
+        }
+
+        return 'application/octet-stream';
     }
 
     /**
@@ -139,44 +196,6 @@ class FileServer
     private function getNotFoundResponse()
     {
         return new Response('', Response::HTTP_NOT_FOUND);
-    }
-
-    /**
-     * Sets the correct content-type
-     *
-     * @param File $file
-     * @param Response $response
-     */
-    private function setContentType(File $file, Response $response)
-    {
-        $extension = pathinfo($file->getPathname(), PATHINFO_EXTENSION);
-
-        switch ($extension) {
-            case 'css':
-                $contentType = 'text/css';
-                break;
-            case 'js':
-                $contentType = 'application/javascript';
-                break;
-            case 'png':
-                $contentType = 'image/png';
-                break;
-            case 'jpg':
-            case 'jpeg':
-                $contentType = 'image/jpeg';
-                break;
-            case 'gif':
-                $contentType = 'image/gif';
-                break;
-            case 'txt':
-                $contentType = 'text/plain';
-                break;
-            default:
-                $contentType = $file->getMimeType();
-                break;
-        }
-
-        $response->headers->set('Content-Type', $contentType);
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use GisoStallenberg\FileServing\FileServer;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,7 +32,7 @@ class FileServerTest extends TestCase
             ->getResponse();
 
         $this->assertEquals($expectedStatusCode, $response->getStatusCode(), 'Asserting that a file is served with the right status code.');
-        $this->assertEquals($expectedContent, $response->getContent(), 'Asserting that the correct file data is served.');
+        $this->assertEquals($expectedContent, $this->readBody($response), 'Asserting that the correct file data is served.');
     }
 
     /**
@@ -46,7 +47,21 @@ class FileServerTest extends TestCase
             ->getResponse();
 
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode(), 'Asserting that an allowed extension is served.');
-        $this->assertEquals('Foo bar baz garply'.PHP_EOL, $response->getContent());
+        $this->assertEquals('Foo bar baz garply'.PHP_EOL, $this->readBody($response));
+    }
+
+    /**
+     * Test that the extension filter matches regardless of case.
+     */
+    public function testExtensionFilterIsCaseInsensitive()
+    {
+        $request = $this->createRequestForUrl('http://www.example.com/foobar/testfiles/Foobar.txt');
+
+        $response = FileServer::create(__DIR__.'/Resources', '/foobar', $request)
+            ->filterExtensions(['TXT'])
+            ->getResponse();
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode(), 'Asserting that extension matching ignores case.');
     }
 
     /**
@@ -74,7 +89,58 @@ class FileServerTest extends TestCase
             ->getResponse();
 
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode(), 'Asserting that a file is found in a later directory.');
-        $this->assertEquals('Foo bar baz garply'.PHP_EOL, $response->getContent());
+        $this->assertEquals('Foo bar baz garply'.PHP_EOL, $this->readBody($response));
+    }
+
+    /**
+     * Test that the content type of common assets is derived from the extension.
+     *
+     * @param string $filename
+     * @param string $expectedContentType
+     */
+    #[DataProvider('provideAssets')]
+    public function testContentTypeForCommonAssets($filename, $expectedContentType)
+    {
+        $request = $this->createRequestForUrl('http://www.example.com/foobar/testfiles/'.$filename);
+
+        $response = FileServer::create(__DIR__.'/Resources', '/foobar', $request)
+            ->getResponse();
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode(), 'Asserting that '.$filename.' is served.');
+        $this->assertEquals($expectedContentType, $response->headers->get('Content-Type'), 'Asserting the content type of '.$filename.'.');
+    }
+
+    /**
+     * Provide common asset files with their expected content type.
+     *
+     * @return array
+     */
+    public static function provideAssets()
+    {
+        return [
+            ['Foobar.txt', 'text/plain'],
+            ['asset.css', 'text/css'],
+            ['asset.js', 'application/javascript'],
+            ['asset.png', 'image/png'],
+            ['asset.jpg', 'image/jpeg'],
+            ['asset.gif', 'image/gif'],
+            ['asset.svg', 'image/svg+xml'],
+        ];
+    }
+
+    /**
+     * Test that a directory traversal request cannot escape the served directory.
+     */
+    public function testPathTraversalIsBlocked()
+    {
+        // %2e%2e decodes to '..'; this resolves to tests/FileServerTest.php, which
+        // exists but sits outside the served Resources directory.
+        $request = $this->createRequestForUrl('http://www.example.com/foobar/%2e%2e/FileServerTest.php');
+
+        $response = FileServer::create(__DIR__.'/Resources', '/foobar', $request)
+            ->getResponse();
+
+        $this->assertEquals(Response::HTTP_NOT_FOUND, $response->getStatusCode(), 'Asserting that directory traversal gives a 404.');
     }
 
     /**
@@ -90,6 +156,22 @@ class FileServerTest extends TestCase
         $request->server->set('REQUEST_URI', $url);
 
         return $request;
+    }
+
+    /**
+     * Reads the served body, which lives on disk for a BinaryFileResponse.
+     *
+     * @param Response $response
+     *
+     * @return string
+     */
+    private function readBody(Response $response)
+    {
+        if ($response instanceof BinaryFileResponse) {
+            return file_get_contents($response->getFile()->getPathname());
+        }
+
+        return $response->getContent();
     }
 
     /**

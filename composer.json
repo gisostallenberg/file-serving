@@ -6,6 +6,9 @@
         "php": "^8.5",
         "symfony/http-foundation": "^8.0"
     },
+    "suggest": {
+        "symfony/mime": "Improves Content-Type detection for extensions outside the built-in map"
+    },
     "license": "MIT",
     "authors": [
         {
