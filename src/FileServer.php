@@ -43,7 +43,7 @@ class FileServer
      * @param string  $to
      * @param Request $request
      */
-    public function __construct($from, $to, Request $request = null)
+    public function __construct($from, $to, ?Request $request = null)
     {
         $this->from = (array) $from;
         $this->to = $to;
@@ -63,7 +63,7 @@ class FileServer
      *
      * @return \static
      */
-    public static function create($from, $to, Request $request = null)
+    public static function create($from, $to, ?Request $request = null)
     {
         return new static($from, $to, $request);
     }
